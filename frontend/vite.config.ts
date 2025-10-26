@@ -40,6 +40,10 @@ export default defineConfig({
       include: [/node_modules/],
     },
   },
+  define: {
+    'global': 'globalThis',
+    'process.env': {}
+  },
   server: {
     // 根据需要启用 COOP/COEP
     headers: {
