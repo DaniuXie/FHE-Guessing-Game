@@ -1,74 +1,74 @@
-# Dependencies
+# 开发过程文档（emoji 开头的 MD 文件）
+⚠️*.md
+⚡*.md
+✅*.md
+❓*.md
+🌍*.md
+🎉*.md
+🎯*.md
+🏁*.md
+📋*.md
+📖*.md
+📚*.md
+🔍*.md
+🔑*.md
+🔒*.md
+🔥*.md
+🔧*.md
+🔴*.md
+🧪*.md
+🧹*.md
+🚀*.md
+
+# 批处理文件
+*.bat
+
+# 开发日志和临时文档
+*学习总结.md
+*测试指南.md
+*实施方案.md
+*说明.md
+*诊断*.txt
+*总结.md
+Sepolia*.txt
+update_debug_log.md
+自查日志.md
+
+# Node modules
 node_modules/
 frontend/node_modules/
-.pnp
-.pnp.js
 
-# Testing
-coverage/
-
-# Production builds
+# 构建产物
+artifacts/
+cache/
 dist/
-frontend/dist/
 build/
-frontend/build/
 
-# Environment files
+# 环境变量
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.env
+.env.*.local
 
-# Debug logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
+# 部署记录
+deployment*.json
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*.sublime-project
-*.sublime-workspace
+*~
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
+
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Hardhat
-cache/
-artifacts/
-typechain/
-typechain-types/
-
-# Deployment files (sensitive)
-deployment_*.json
-*.secret
-*.key
-*.mnemonic
-
-# Temporary files
+# 临时文件
 *.tmp
 *.temp
-.cache/
-
-# Build info
-*.tsbuildinfo
-
-# Local development
-.env.development
-
-# Hardhat / Ethereum
-coverage.json
-.openzeppelin/
-deployments/
-
-# Misc
-*.pid
-*.seed
-*.pid.lock

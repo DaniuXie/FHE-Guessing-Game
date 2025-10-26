@@ -1,0 +1,35 @@
+# Environment Variables Template
+# Copy this file to .env and fill in your actual values
+# NEVER commit the real .env file to version control!
+
+# ==================================================
+# Deployer Configuration
+# ==================================================
+DEPLOYER_PRIVATE_KEY=your_private_key_here_0x...
+
+# ==================================================
+# Network Configuration
+# ==================================================
+SEPOLIA_RPC_URL=https://eth-sepolia.public.blastapi.io
+ALCHEMY_KEY=your_alchemy_api_key_here
+ETHERSCAN_API_KEY=your_etherscan_api_key_here
+
+# ==================================================
+# Contract Addresses (fill after deployment)
+# ==================================================
+FHE_CONTRACT_ADDRESS=
+PLAINTEXT_CONTRACT_ADDRESS=
+
+# ==================================================
+# Frontend Configuration
+# ==================================================
+VITE_FHE_CONTRACT_ADDRESS=
+VITE_PLAINTEXT_CONTRACT_ADDRESS=
+VITE_NETWORK_ID=11155111
+
+# ==================================================
+# Example Values (from current deployment)
+# ==================================================
+# FHE_CONTRACT_ADDRESS=0x39686AAfd7d68Ab66253f92bF72c5D16b0c442E3
+# PLAINTEXT_CONTRACT_ADDRESS=0x6bD042918869d1136043b0318FF530cAA5bE377e
+
