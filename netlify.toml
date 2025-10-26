@@ -32,6 +32,19 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
+# WASM files configuration
+[[headers]]
+  for = "/*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/assets/*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+    Cache-Control = "public, max-age=31536000, immutable"
+
 # Environment variables (will be set in Netlify UI or via CLI)
 # VITE_FHE_CONTRACT_ADDRESS
 # VITE_PLAINTEXT_CONTRACT_ADDRESS
