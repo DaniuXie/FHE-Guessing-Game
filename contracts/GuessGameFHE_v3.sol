@@ -18,6 +18,23 @@ import "fhevm/gateway/GatewayCaller.sol";
  */
 contract GuessGameFHE_v3 is GatewayCaller {
     
+    // ==================== 所有者管理 ====================
+    address public contractOwner;
+    
+    constructor() {
+        contractOwner = msg.sender;
+    }
+    
+    modifier onlyOwner() {
+        require(msg.sender == contractOwner, "Only owner can call this");
+        _;
+    }
+    
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "Invalid new owner");
+        contractOwner = newOwner;
+    }
+    
     // ==================== 状态枚举 ====================
     enum GameStatus {
         ACTIVE,           // 游戏进行中
