@@ -1,0 +1,20 @@
+{
+  "network": "sepolia",
+  "contractName": "GuessGameFHE_v3",
+  "address": "0x5abEb1f463419F577ab51939DF978e7Ef14d5325",
+  "deployer": "0x88B3B71B8392d0Bd7C0F253FE19622D80Fb7e949",
+  "deployedAt": "2025-10-29T05:37:25.758Z",
+  "blockNumber": null,
+  "transactionHash": "0xbf21988633de6a17f7e0f0775b3342e02e00080607772389ae45700963166ac6",
+  "upgrades": {
+    "from": "GuessGameFHE_v2",
+    "changes": [
+      "修复 Gas Limit = 0 问题",
+      "添加 DecryptionRequest 追踪系统",
+      "实现重试机制",
+      "实现超时处理",
+      "添加应急管理功能",
+      "完善事件系统"
+    ]
+  }
+}
