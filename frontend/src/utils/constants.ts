@@ -7,8 +7,8 @@ export const SEPOLIA_CHAIN_ID = 11155111;
 export const SEPOLIA_RPC_URL = "https://eth-sepolia.public.blastapi.io";
 
 // 🎯 Simplified Contract Address (Plaintext Version - GuessGameSimple)
-// 🆕 Redeployed: 2025-10-25 (Fresh contract, no historical data)
-export const CONTRACT_ADDRESS = "0x6bD042918869d1136043b0318FF530cAA5bE377e";
+// 🆕 Redeployed: 2025-10-29 (Fresh contract for Netlify deployment)
+export const CONTRACT_ADDRESS = "0x5AF7bB5030A6cCF5BA09315987E4480B40421a57";
 
 // 🎯 Simplified Contract ABI (Plaintext Version)
 export const CONTRACT_ABI = [
