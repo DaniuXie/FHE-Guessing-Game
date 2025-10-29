@@ -1,11 +1,13 @@
 /**
- * Game Details and Management Component (Simplified - Plaintext Version)
+ * Game Details and Management Component (Upgraded with Decryption Support)
  */
 
 import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 import { useContract, GameInfo } from "../hooks/useContractDual";
 import { useWallet } from "../hooks/useWallet";
+import { useDecryption } from "../hooks/useDecryption";
+import { DecryptionProgress } from "./DecryptionProgress";
 import { GameStatus, GAME_STATUS_TEXT } from "../utils/constants";
 import { GameStatusFHE, GAME_STATUS_TEXT_FHE } from "../utils/constants_fhe";
 import { formatEther, formatAddress, formatTimestamp } from "../utils/format";
@@ -17,12 +19,22 @@ interface GameDetailsProps {
 
 export function GameDetails({ gameId, onGameEnded }: GameDetailsProps) {
   const { isConnected, address } = useWallet();
-  const { endGame, getGameInfo, getPlayers, getPlayerGuess, loading, contractType } = useContract();
+  const { contract, endGame, getGameInfo, getPlayers, getPlayerGuess, loading, contractType } = useContract();
 
   const [gameInfo, setGameInfo] = useState<GameInfo | null>(null);
   const [players, setPlayers] = useState<string[]>([]);
   const [playerGuesses, setPlayerGuesses] = useState<Record<string, number>>({});
   const [loadingGame, setLoadingGame] = useState(true);
+  const [showDecryptionModal, setShowDecryptionModal] = useState(false);
+
+  // 使用新的解密 Hook
+  const {
+    requestDecryption,
+    status: decryptStatus,
+    progress: decryptProgress,
+    error: decryptError,
+    reset: resetDecryption
+  } = useDecryption(contract);
 
   // Load game details (using useCallback to avoid closure traps)
   const loadGameDetails = useCallback(async () => {
@@ -82,7 +94,58 @@ export function GameDetails({ gameId, onGameEnded }: GameDetailsProps) {
     };
   }, [loadGameDetails]); // 🔧 修复：只依赖 loadGameDetails（它已经包含了所有依赖）
 
-  const handleEndGame = async () => {
+  // FHE版本：使用新的解密流程
+  const handleEndGameFHE = async () => {
+    if (!gameInfo) {
+      toast.error("游戏信息未加载");
+      return;
+    }
+
+    if (gameInfo.playerCount === 0) {
+      toast.error("游戏中没有玩家，无法结束");
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `确认结束游戏吗？\n\n这将触发 FHE 解密流程：\n1. 提交解密请求（10-30秒）\n2. Gateway 解密（30-90秒）\n3. 链上回调（5-15秒）\n\n总共预计 1-2 分钟`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setShowDecryptionModal(true);
+      resetDecryption();
+      
+      // 使用新的解密流程
+      const result = await requestDecryption(gameId);
+      
+      console.log('解密结果:', result);
+      
+      // 刷新游戏信息
+      await loadGameDetails();
+      
+      if (onGameEnded) {
+        onGameEnded();
+      }
+      
+      toast.success('🎉 游戏结束！获胜者已确定');
+      
+      // 3秒后自动关闭模态框
+      setTimeout(() => {
+        setShowDecryptionModal(false);
+      }, 3000);
+      
+    } catch (error: any) {
+      console.error('解密失败:', error);
+      toast.error(`解密失败: ${error.message || '未知错误'}`);
+      // 保持模态框打开以显示错误
+    }
+  };
+
+  // 明文版本：使用原有逻辑
+  const handleEndGameSimple = async () => {
     if (!gameInfo) {
       toast.error("Game information not loaded");
       return;
@@ -127,6 +190,9 @@ export function GameDetails({ gameId, onGameEnded }: GameDetailsProps) {
       }
     );
   };
+
+  // 根据合约类型选择处理函数
+  const handleEndGame = contractType === "fhe" ? handleEndGameFHE : handleEndGameSimple;
 
   if (!isConnected) {
     return (
@@ -395,6 +461,8 @@ export function GameDetails({ gameId, onGameEnded }: GameDetailsProps) {
                 </svg>
                 Processing...
               </span>
+            ) : contractType === "fhe" ? (
+              "🔐 End Game (FHE Decryption)"
             ) : (
               "🏁 End Game and Calculate Winner"
             )}
@@ -405,6 +473,68 @@ export function GameDetails({ gameId, onGameEnded }: GameDetailsProps) {
               At least 1 player required to end game
             </p>
           )}
+          
+          {contractType === "fhe" && gameInfo.playerCount > 0 && (
+            <p className="text-xs text-purple-400 text-center mt-2">
+              💡 使用 FHE 加密解密流程，预计耗时 1-2 分钟
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* 🆕 解密进度模态框 (FHE only) */}
+      {showDecryptionModal && contractType === "fhe" && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4 border-2 border-purple-500">
+            <h3 className="text-xl font-bold text-white mb-4">
+              🔐 FHE 解密进度
+            </h3>
+            
+            <DecryptionProgress 
+              status={decryptStatus}
+              progress={decryptProgress}
+              error={decryptError}
+            />
+            
+            {/* 操作按钮 */}
+            <div className="mt-6 space-y-2">
+              {decryptStatus === 'failed' && (
+                <>
+                  <button
+                    onClick={() => {
+                      resetDecryption();
+                      handleEndGameFHE();
+                    }}
+                    className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition"
+                  >
+                    🔄 重试
+                  </button>
+                  <button
+                    onClick={() => setShowDecryptionModal(false)}
+                    className="w-full bg-gray-600 text-white py-2 px-4 rounded hover:bg-gray-700 transition"
+                  >
+                    关闭
+                  </button>
+                </>
+              )}
+              
+              {decryptStatus === 'success' && (
+                <button
+                  onClick={() => setShowDecryptionModal(false)}
+                  className="w-full bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700 transition"
+                >
+                  ✅ 查看结果
+                </button>
+              )}
+              
+              {(decryptStatus === 'idle' || decryptStatus === 'requesting' || 
+                decryptStatus === 'polling' || decryptStatus === 'waiting') && (
+                <p className="text-xs text-gray-400 text-center">
+                  请耐心等待，不要关闭此窗口
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
