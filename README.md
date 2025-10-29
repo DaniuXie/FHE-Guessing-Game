@@ -1,4 +1,5 @@
 # 🎮 Confidential Number Guessing Game
+<img width="2560" height="1279" alt="image" src="https://github.com/user-attachments/assets/ada0396e-60b9-4179-8957-c63dc7333f05" />
 
 <div align="center">
 
@@ -9,7 +10,7 @@
 
 **A fully confidential on-chain guessing game powered by Zama's Fully Homomorphic Encryption (FHE)**
 
-[Live Demo](#) • [Documentation](#features) • [Report Bug](https://github.com/yourusername/fhe-guessing-game/issues)
+[Live Demo](https://zama-fhe-guessing-game.netlify.app/) • [Video](https://www.youtube.com/watch?v=_6REYxm8lj0#) • [Report Bug](https://github.com/yourusername/fhe-guessing-game/issues)
 
 </div>
 
@@ -305,10 +306,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 ## 📧 Contact
-
-- **Project Maintainer**: [Your Name]
-- **Email**: your.email@example.com
-- **GitHub**: [@yourusername](https://github.com/yourusername)
 
 ---
 
