@@ -34,6 +34,29 @@ const FHEVM_CONFIG = {
 let fhevmInstance: any = null;
 
 /**
+ * 从 Gateway 获取公钥
+ */
+async function fetchPublicKey() {
+  try {
+    console.log("🔑 正在从 Gateway 获取公钥...");
+    const response = await fetch(FHEVM_CONFIG.publicKeyUrl);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const publicKeyData = await response.json();
+    console.log("✅ 公钥获取成功");
+    console.log("   Public Key ID:", publicKeyData.publicKeyId || "N/A");
+    
+    return publicKeyData;
+  } catch (error) {
+    console.error("❌ 获取公钥失败:", error);
+    throw new Error(`Failed to fetch public key: ${error}`);
+  }
+}
+
+/**
  * 初始化 FHEVM SDK
  */
 export async function initFhevmSDK() {
@@ -46,16 +69,22 @@ export async function initFhevmSDK() {
   console.log("📡 Gateway URL:", FHEVM_CONFIG.gatewayUrl);
   console.log("🔑 Public Key URL:", FHEVM_CONFIG.publicKeyUrl);
   console.log("🏠 KMS Contract:", FHEVM_CONFIG.kmsContractAddress);
-  console.log("📋 完整配置:");
-  console.log(JSON.stringify(FHEVM_CONFIG, null, 2));
 
   try {
-    fhevmInstance = await createInstance(FHEVM_CONFIG);
+    // 步骤 1: 获取公钥
+    const publicKeyData = await fetchPublicKey();
     
-    // 如果 SDK 需要额外的初始化步骤（查看 SDK 文档）
-    if (fhevmInstance.initSDK) {
-      await fhevmInstance.initSDK();
-    }
+    // 步骤 2: 创建包含公钥的完整配置
+    const configWithPublicKey = {
+      ...FHEVM_CONFIG,
+      publicKey: publicKeyData.publicKey,
+      publicKeyId: publicKeyData.publicKeyId,
+    };
+    
+    console.log("📋 使用配置创建实例（含公钥）");
+    
+    // 步骤 3: 创建实例
+    fhevmInstance = await createInstance(configWithPublicKey);
     
     console.log("✅ FHEVM SDK 初始化成功");
     return fhevmInstance;
