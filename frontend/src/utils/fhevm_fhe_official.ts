@@ -3,13 +3,25 @@
  */
 
 // 正确的导入：使用 /web 子路径（用于浏览器环境）
-// ✅ 直接导入官方的 SepoliaConfig，包含所有必需的合约地址
-import { createInstance, SepoliaConfig } from "@zama-fhe/relayer-sdk/web";
+import { createInstance } from "@zama-fhe/relayer-sdk/web";
 
-// 使用官方内置的 Sepolia 配置
+// ✅ 修复：使用正确的 Sepolia 配置（基于最新的 Zama 文档）
 const FHEVM_CONFIG = {
-  ...SepoliaConfig,  // ✅ 包含所有必需字段
-  networkUrl: "https://eth-sepolia.public.blastapi.io",  // 可选：自定义 RPC
+  // 链配置
+  chainId: 11155111,
+  network: "https://eth-sepolia.public.blastapi.io",
+  networkUrl: "https://eth-sepolia.public.blastapi.io",
+  
+  // Gateway 配置（正确的 URL）
+  gatewayUrl: "https://gateway.sepolia.zama.ai",
+  
+  // 合约地址（Sepolia Coprocessor 官方地址）
+  aclContractAddress: "0x687820221192C5B662b25367F70076A37bc79b6c",
+  kmsContractAddress: "0x1364cBBf2cDF5032C47d8226a6f6FBD2AFCDacAC",
+  inputVerifierContractAddress: "0xbc91f3daD1A5F19F8390c400196e58073B6a0BC4",
+  
+  // 公钥端点（重要！）
+  publicKeyUrl: "https://gateway.sepolia.zama.ai/v1/public-key",
 };
 
 let fhevmInstance: any = null;
@@ -23,9 +35,10 @@ export async function initFhevmSDK() {
     return fhevmInstance;
   }
 
-  console.log("🔧 初始化 FHEVM SDK (官方 Relayer SDK)...");
-  console.log("📡 使用官方 SepoliaConfig");
-  console.log("🔑 KMS Contract Address:", FHEVM_CONFIG.kmsContractAddress);
+  console.log("🔧 初始化 FHEVM SDK (修复版配置)...");
+  console.log("📡 Gateway URL:", FHEVM_CONFIG.gatewayUrl);
+  console.log("🔑 Public Key URL:", FHEVM_CONFIG.publicKeyUrl);
+  console.log("🏠 KMS Contract:", FHEVM_CONFIG.kmsContractAddress);
   console.log("📋 完整配置:");
   console.log(JSON.stringify(FHEVM_CONFIG, null, 2));
 
