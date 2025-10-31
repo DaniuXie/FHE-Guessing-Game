@@ -6,53 +6,91 @@ import "fhevm/gateway/GatewayCaller.sol";
 
 /**
  * @title GuessGameFHE_v2
- * @notice 完整FHE版本的猜数字游戏（使用 Gateway 自动解密）
- * @dev 真正的完全隐私保护游戏
+ * @notice Complete FHE version of number guessing game (using Gateway automatic decryption)
+ * @dev Truly fully privacy-protected game
  * 
- * 隐私保护：
- * - 目标数字：加密存储，游戏结束时才解密
- * - 玩家猜测：加密存储，游戏结束时才解密
- * - 比较计算：完全在密文状态下进行
- * - 获胜者：通过 Gateway 自动解密并回调
+ * Privacy Protection:
+ * - Target number: Encrypted storage, decrypted only when game ends
+ * - Player guesses: Encrypted storage, decrypted only when game ends
+ * - Comparison calculation: Completely performed in ciphertext state
+ * - Winner: Automatically decrypted and called back via Gateway
  */
 contract GuessGameFHE_v2 is GatewayCaller {
     
+    // ========== Status Enum (Required by Manual 2.1) ==========
     enum GameStatus {
-        ACTIVE,        // 游戏进行中
-        DECRYPTING,    // 等待 Gateway 解密
-        ENDED          // 游戏已结束
+        ACTIVE,        // Game in progress
+        DECRYPTING,    // Waiting for Gateway decryption
+        ENDED          // Game ended
     }
     
+    // ========== Decryption Request Structure (Required by Manual 2.1) ==========
+    struct DecryptionRequest {
+        uint256 gameId;
+        address requester;
+        uint256 timestamp;
+        uint8 retryCount;
+        bool processed;
+    }
+    
+    // ========== Game Structure ==========
     struct Game {
         uint256 gameId;
-        euint32 encryptedTarget;        // 🔐 加密的目标数字
+        euint32 encryptedTarget;        // 🔐 Encrypted target number
         address owner;
         uint256 entryFee;
         uint256 prizePool;
         address[] players;
-        mapping(address => euint32) encryptedGuesses;  // 🔐 加密的猜测
+        mapping(address => euint32) encryptedGuesses;  // 🔐 Encrypted guesses
         mapping(address => bool) hasGuessed;
         GameStatus status;
         address winner;
-        uint32 revealedTarget;           // 游戏结束后揭露
-        mapping(address => uint32) revealedGuesses;    // 游戏结束后揭露
+        uint32 revealedTarget;           // Revealed after game ends
+        mapping(address => uint32) revealedGuesses;    // Revealed after game ends
         uint256 createdAt;
-        uint256 decryptRequestId;        // Gateway 解密请求 ID
+        uint256 decryptRequestId;        // Gateway decryption request ID
     }
     
+    // ========== State Variables ==========
     mapping(uint256 => Game) public games;
+    mapping(uint256 => DecryptionRequest) public decryptionRequests;
+    mapping(uint256 => uint256) private requestIdToGameId;
+    mapping(uint256 => uint256) private gameIdToRequestId;
     uint256 public gameCounter;
     
-    // Gateway 请求映射
-    mapping(uint256 => uint256) private requestIdToGameId;
+    // ========== Configuration Constants (Required by Manual 2.1) ==========
+    uint256 public constant CALLBACK_GAS_LIMIT = 500000;  // ⚠️ Critical: Must not be 0
+    uint256 public constant REQUEST_TIMEOUT = 30 minutes;
+    uint256 public constant GAME_DURATION = 24 hours;
+    uint8 public constant MAX_RETRIES = 3;
     
+    // ========== Events (Required by Manual 2.1) ==========
     event GameCreated(uint256 indexed gameId, address indexed owner, uint256 entryFee, uint256 timestamp);
     event PlayerJoined(uint256 indexed gameId, address indexed player, uint256 prizePool, uint256 timestamp);
-    event DecryptionRequested(uint256 indexed gameId, uint256 requestId, uint256 timestamp);
+    event DecryptionRequested(
+        uint256 indexed requestId, 
+        uint256 indexed gameId, 
+        uint256 timestamp
+    );
+    event DecryptionCompleted(
+        uint256 indexed requestId,
+        uint256 indexed gameId,
+        uint32 decryptedValue
+    );
+    event DecryptionFailed(
+        uint256 indexed requestId,
+        uint256 indexed gameId,
+        string reason
+    );
+    event DecryptionRetrying(
+        uint256 indexed requestId,
+        uint8 retryCount
+    );
     event GameEnded(uint256 indexed gameId, address indexed winner, uint256 prize, uint32 target, uint256 timestamp);
     
     /**
-     * @notice 创建新游戏
+     * @notice Create new game (Manual 3.5 - FHE Encryption)
+     * @dev Uses createEncryptedInput → add32 → encrypt flow
      */
     function createGame(
         einput encryptedTarget,
@@ -151,52 +189,80 @@ contract GuessGameFHE_v2 is GatewayCaller {
             // 暂时使用简化方案
         }
         
-        // 🚀 请求 Gateway 解密
-        // 我们需要解密：目标数字 + 所有玩家的猜测
+        // 🚀 Request Gateway decryption
+        // We need to decrypt: target number + all player guesses
+        
+        // ✅ Step 1: Authorize encrypted values to Gateway (Required by Manual 2.2)
+        TFHE.allow(game.encryptedTarget, Gateway.GATEWAY_CONTRACT_ADDRESS);
+        for (uint256 i = 0; i < game.players.length; i++) {
+            TFHE.allow(game.encryptedGuesses[game.players[i]], Gateway.GATEWAY_CONTRACT_ADDRESS);
+        }
+        
+        // ✅ Step 2: Prepare ciphertext array
         uint256[] memory cts = new uint256[](game.players.length + 1);
         cts[0] = Gateway.toUint256(game.encryptedTarget);
         for (uint256 i = 0; i < game.players.length; i++) {
             cts[i + 1] = Gateway.toUint256(game.encryptedGuesses[game.players[i]]);
         }
         
-        // 请求解密并获取请求ID
+        // ✅ Step 3: Request decryption with proper parameters (Manual 2.2)
         uint256 requestId = Gateway.requestDecryption(
             cts,
-            this.callbackEndGame.selector,
-            0,
-            block.timestamp + 100,
-            false
+            this.callbackEndGame.selector,  // Callback function
+            CALLBACK_GAS_LIMIT,               // ✅ Enough Gas (Manual requirement)
+            block.timestamp + REQUEST_TIMEOUT, // ✅ Reasonable timeout
+            false                              // Not single-user decryption
         );
         
-        // 保存请求ID和游戏ID的映射
+        // ✅ Step 4: Record request mapping (Required by Manual 2.1)
         requestIdToGameId[requestId] = gameId;
+        gameIdToRequestId[gameId] = requestId;
+        
+        decryptionRequests[requestId] = DecryptionRequest({
+            gameId: gameId,
+            requester: msg.sender,
+            timestamp: block.timestamp,
+            retryCount: 0,
+            processed: false
+        });
+        
         game.decryptRequestId = requestId;
         game.status = GameStatus.DECRYPTING;
         
-        emit DecryptionRequested(gameId, requestId, block.timestamp);
+        emit DecryptionRequested(requestId, gameId, block.timestamp);
     }
     
     /**
-     * @notice Gateway 回调函数
-     * @dev 只有 Gateway 可以调用此函数
-     * @param requestId 解密请求ID
-     * @param decryptedData 解密后的数据数组
+     * @notice Gateway callback function (Required by Manual 2.3)
+     * @dev Only Gateway can call this function
+     * @param requestId Decryption request ID
+     * @param decryptedData Decrypted data array
      */
     function callbackEndGame(
         uint256 requestId,
         uint256[] memory decryptedData
     ) public onlyGateway {
-        uint256 gameId = requestIdToGameId[requestId];
+        DecryptionRequest storage request = decryptionRequests[requestId];
+        
+        // ✅ Complete validation (prevent replay attacks) - Manual 2.3
+        require(request.timestamp > 0, "Invalid request ID");
+        require(!request.processed, "Request already processed");
+        require(
+            block.timestamp <= request.timestamp + REQUEST_TIMEOUT,
+            "Request expired"
+        );
+        
+        uint256 gameId = request.gameId;
         Game storage game = games[gameId];
         
-        require(game.status == GameStatus.DECRYPTING, "Not decrypting");
+        require(game.status == GameStatus.DECRYPTING, "Invalid game state");
         require(decryptedData.length == game.players.length + 1, "Invalid data length");
         
-        // 解析解密后的数据
+        // Parse decrypted data
         uint32 target = uint32(decryptedData[0]);
         game.revealedTarget = target;
         
-        // 明文计算获胜者（现在数据已经解密）
+        // Plaintext calculation of winner (data is now decrypted)
         address bestPlayer = game.players[0];
         uint32 bestGuess = uint32(decryptedData[1]);
         game.revealedGuesses[bestPlayer] = bestGuess;
@@ -217,10 +283,111 @@ contract GuessGameFHE_v2 is GatewayCaller {
         game.winner = bestPlayer;
         game.status = GameStatus.ENDED;
         
-        // 转账给获胜者
+        // ✅ Mark request as processed (prevent replay) - Manual 2.3
+        request.processed = true;
+        
+        // Transfer prize to winner
         payable(bestPlayer).transfer(game.prizePool);
         
+        // ✅ Emit completion event - Manual 2.1
+        emit DecryptionCompleted(requestId, gameId, target);
         emit GameEnded(gameId, bestPlayer, game.prizePool, target, block.timestamp);
+    }
+    
+    /**
+     * @notice Retry decryption request (Manual 2.4 - Retry Mechanism)
+     * @dev Owner can retry failed decryption requests
+     * @param gameId Game ID to retry
+     */
+    function retryDecryption(uint256 gameId) external {
+        Game storage game = games[gameId];
+        require(game.owner == msg.sender, "Only owner can retry");
+        require(game.status == GameStatus.DECRYPTING, "Invalid game state");
+        
+        uint256 requestId = game.decryptRequestId;
+        DecryptionRequest storage request = decryptionRequests[requestId];
+        
+        // Check if retry is needed
+        require(
+            block.timestamp > request.timestamp + REQUEST_TIMEOUT,
+            "Request still valid"
+        );
+        require(
+            request.retryCount < MAX_RETRIES,
+            "Max retries reached"
+        );
+        
+        // Increment retry count
+        request.retryCount++;
+        emit DecryptionRetrying(requestId, request.retryCount);
+        
+        // Authorize again
+        TFHE.allow(game.encryptedTarget, Gateway.GATEWAY_CONTRACT_ADDRESS);
+        for (uint256 i = 0; i < game.players.length; i++) {
+            TFHE.allow(game.encryptedGuesses[game.players[i]], Gateway.GATEWAY_CONTRACT_ADDRESS);
+        }
+        
+        // Prepare ciphertext array
+        uint256[] memory cts = new uint256[](game.players.length + 1);
+        cts[0] = Gateway.toUint256(game.encryptedTarget);
+        for (uint256 i = 0; i < game.players.length; i++) {
+            cts[i + 1] = Gateway.toUint256(game.encryptedGuesses[game.players[i]]);
+        }
+        
+        // Request new decryption
+        uint256 newRequestId = Gateway.requestDecryption(
+            cts,
+            this.callbackEndGame.selector,
+            CALLBACK_GAS_LIMIT,
+            block.timestamp + REQUEST_TIMEOUT,
+            false
+        );
+        
+        // Update mappings
+        requestIdToGameId[newRequestId] = gameId;
+        gameIdToRequestId[gameId] = newRequestId;
+        
+        decryptionRequests[newRequestId] = DecryptionRequest({
+            gameId: gameId,
+            requester: msg.sender,
+            timestamp: block.timestamp,
+            retryCount: request.retryCount,
+            processed: false
+        });
+        
+        game.decryptRequestId = newRequestId;
+        emit DecryptionRequested(newRequestId, gameId, block.timestamp);
+    }
+    
+    /**
+     * @notice Cancel expired decryption request (Manual 2.4 - Timeout Cancellation)
+     * @dev Allows owner to cancel and manually end game if Gateway fails
+     * @param gameId Game ID to cancel
+     */
+    function cancelDecryptionRequest(uint256 gameId) external {
+        Game storage game = games[gameId];
+        require(game.owner == msg.sender, "Only owner can cancel");
+        require(game.status == GameStatus.DECRYPTING, "Invalid game state");
+        
+        uint256 requestId = game.decryptRequestId;
+        DecryptionRequest storage request = decryptionRequests[requestId];
+        
+        // Only allow cancellation after timeout
+        require(
+            block.timestamp > request.timestamp + REQUEST_TIMEOUT,
+            "Request still valid"
+        );
+        require(
+            request.retryCount >= MAX_RETRIES,
+            "Please use retryDecryption first"
+        );
+        
+        // Mark as failed
+        emit DecryptionFailed(requestId, gameId, "Timeout after max retries");
+        
+        // Refund prize pool to owner (emergency fallback)
+        game.status = GameStatus.ENDED;
+        payable(game.owner).transfer(game.prizePool);
     }
     
     /**

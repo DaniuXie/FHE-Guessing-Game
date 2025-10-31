@@ -1,0 +1,46 @@
+[build]
+  # No build needed - files are pre-built
+  command = ""
+  
+  # Publish the root directory (pre-built files)
+  publish = "."
+  
+  # Functions directory
+  functions = ".netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# SPA redirect rules
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    X-XSS-Protection = "1; mode=block"
+
+# Cache static assets
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Cache WASM files
+[[headers]]
+  for = "*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Functions configuration
+[functions]
+  node_bundler = "esbuild"
+  included_files = ["node_modules/**"]

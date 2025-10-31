@@ -1,6 +1,6 @@
 /**
- * 智能合约交互 Hook（双合约版本）
- * 支持方案B（明文）和方案A（FHE）
+ * Smart Contract Interaction Hook (Dual Contract Version)
+ * Supports Scheme B (Plaintext) and Scheme A (FHE)
  */
 
 import { useState, useCallback, useMemo } from "react";
@@ -57,39 +57,58 @@ export function useContract() {
     return new Contract(contractAddress, contractABI, provider);
   }, [provider, address, contractAddress, contractABI]);
 
-  // 🎯 创建游戏
+  // 🎯 Create game
   const createGame = useCallback(
     async (targetNumber: number, entryFeeEth: string) => {
       if (!contract || !address || !provider) {
-        throw new Error("请先连接钱包");
+        throw new Error("Please connect wallet first");
       }
 
       setLoading(true);
       setError(null);
 
       try {
-        console.log(`🎮 创建游戏 [${contractType === "fhe" ? "FHE" : "明文"}]...`);
-        console.log("   目标数字:", targetNumber);
-        console.log("   入场费:", entryFeeEth, "ETH");
+        console.log(`🎮 Creating game [${contractType === "fhe" ? "FHE" : "Plaintext"}]...`);
+        console.log("   Target number:", targetNumber);
+        console.log("   Entry fee:", entryFeeEth, "ETH");
+        console.log("🔍 Contract address:", contractAddress);
+        console.log("🔍 User address:", address);
 
+        // ethers v6: getSigner() gets default signer
         const signer = await provider.getSigner();
+        console.log("✅ Signer obtained");
+        const signerAddress = await signer.getAddress();
+        console.log("   Signer address:", signerAddress);
+        
+        // Ensure signer address matches connected address
+        if (signerAddress.toLowerCase() !== address.toLowerCase()) {
+          throw new Error(`Address mismatch: signer=${signerAddress}, expected=${address}`);
+        }
+        
         const contractWithSigner = contract.connect(signer);
+        console.log("✅ Contract connected to signer");
         const entryFee = parseEther(entryFeeEth);
+        console.log("✅ Entry fee converted:", entryFee.toString());
 
         let tx;
 
         if (contractType === "fhe") {
-          // 方案A：FHE 加密（使用官方 Relayer SDK）
-          console.log("🔐 使用 FHE 加密（官方 SDK /web）...");
+          // Scheme A: FHE encryption (using official Relayer SDK)
+          console.log("🔐 Using FHE encryption (official SDK /web)...");
           
-          // 确保 FHEVM SDK 已初始化
+          // Ensure FHEVM SDK is initialized
           await initFhevmSDK();
           
+          // ✅ Follow manual 3.5: createEncryptedInput → add32 → encrypt
           const { handle, proof } = await encryptNumberFHE(
             targetNumber,
             contractAddress,
             address
           );
+          
+          console.log("✅ Encryption completed");
+          console.log("   Handle:", handle);
+          console.log("   Proof length:", proof.length);
           
           tx = await contractWithSigner.createGame(
             handle,
@@ -98,18 +117,49 @@ export function useContract() {
             { value: entryFee }
           );
         } else {
-          // 方案B：明文
-          console.log("📝 使用明文方式...");
+          // Scheme B: Plaintext
+          console.log("📝 Using plaintext mode...");
           const plainNumber = await encryptNumberSimple(targetNumber);
-          tx = await contractWithSigner.createGame(plainNumber, entryFee, {
+          console.log("🔍 Preparing to call contract createGame:");
+          console.log("   - Target number (uint32):", plainNumber, typeof plainNumber);
+          console.log("   - Entry fee (uint256):", entryFee.toString(), "wei");
+          console.log("   - msg.value:", entryFee.toString(), "wei");
+          console.log("   - Contract address:", contractWithSigner.target);
+          
+          // Build transaction object
+          const txParams = {
             value: entryFee,
-          });
+            gasLimit: 200000, // Manually set Gas Limit to avoid estimation
+          };
+          
+          console.log("   - Transaction params:", JSON.stringify({
+            value: txParams.value.toString(),
+            gasLimit: txParams.gasLimit
+          }));
+          
+          console.log("⏳ Calling createGame, waiting for MetaMask confirmation...");
+          
+          try {
+            tx = await contractWithSigner.createGame(plainNumber, entryFee, txParams);
+            console.log("✅ MetaMask confirmation completed, transaction sent:", tx.hash);
+          } catch (txError: any) {
+            console.error("❌ Transaction sending failed:", txError);
+            console.error("   Error code:", txError.code);
+            console.error("   Error message:", txError.message);
+            if (txError.reason) {
+              console.error("   Revert reason:", txError.reason);
+            }
+            if (txError.data) {
+              console.error("   Error data:", txError.data);
+            }
+            throw txError;
+          }
         }
 
-        console.log("⏳ 等待交易确认...", tx.hash);
+        console.log("⏳ Waiting for transaction confirmation...", tx.hash);
         const receipt = await tx.wait();
 
-        console.log("✅ 游戏创建成功!");
+        console.log("✅ Game created successfully!");
 
         // 解析事件获取游戏ID
         const event = receipt.logs.find((log: any) => {

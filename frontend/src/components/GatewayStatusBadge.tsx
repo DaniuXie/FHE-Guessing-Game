@@ -10,6 +10,8 @@
 
 import { useEffect, useState } from "react";
 import { useContractType, GatewayStatus, onGatewayStatusChange } from "../contexts/ContractContext";
+import { CONTRACT_ADDRESS } from "../utils/constants";
+import { CONTRACT_ADDRESS_FHE } from "../utils/constants_fhe";
 
 export function GatewayStatusBadge() {
   const { gatewayStatus, contractType, isAutoMode, setAutoMode } = useContractType();
@@ -113,7 +115,7 @@ export function GatewayStatusBadge() {
                         <div className="font-semibold text-purple-400">Scheme A - FHE Full Encryption</div>
                         <div className="mt-1">Target number and guesses fully encrypted</div>
                         <div className="mt-1 font-mono text-xs">
-                          0x39686A...c442E3
+                          {CONTRACT_ADDRESS_FHE.slice(0, 8)}...{CONTRACT_ADDRESS_FHE.slice(-6)}
                         </div>
                       </div>
                     </div>
@@ -126,7 +128,7 @@ export function GatewayStatusBadge() {
                         <div className="font-semibold text-blue-400">Scheme B - Plaintext Test Version</div>
                         <div className="mt-1">Data in plaintext, convenient for testing</div>
                         <div className="mt-1 font-mono text-xs">
-                          0x6bD042...377e
+                          {CONTRACT_ADDRESS.slice(0, 8)}...{CONTRACT_ADDRESS.slice(-4)}
                         </div>
                       </div>
                     </div>

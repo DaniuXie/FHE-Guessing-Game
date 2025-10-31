@@ -1,5 +1,5 @@
 /**
- * FHEVM SDK 工具函数 - 使用官方推荐的 @zama-fhe/relayer-sdk
+ * FHEVM SDK Utility Functions - Using official @zama-fhe/relayer-sdk
  */
 
 // 正确的导入：使用 /web 子路径（用于浏览器环境）
@@ -38,7 +38,7 @@ let fhevmInstance: any = null;
  */
 async function fetchPublicKey() {
   try {
-    console.log("🔑 正在从 Gateway 获取公钥...");
+    console.log("🔑 Fetching public key from Gateway...");
     const response = await fetch(FHEVM_CONFIG.publicKeyUrl);
     
     if (!response.ok) {
@@ -46,117 +46,117 @@ async function fetchPublicKey() {
     }
     
     const publicKeyData = await response.json();
-    console.log("✅ 公钥获取成功");
+    console.log("✅ Public key fetched successfully");
     console.log("   Public Key ID:", publicKeyData.publicKeyId || "N/A");
     
     return publicKeyData;
   } catch (error) {
-    console.error("❌ 获取公钥失败:", error);
+    console.error("❌ Failed to fetch public key:", error);
     throw new Error(`Failed to fetch public key: ${error}`);
   }
 }
 
 /**
- * 初始化 FHEVM SDK
+ * Initialize FHEVM SDK
  */
 export async function initFhevmSDK() {
   if (fhevmInstance) {
-    console.log("♻️ 使用已存在的 FHEVM 实例");
+    console.log("♻️ Using existing FHEVM instance");
     return fhevmInstance;
   }
 
-  console.log("🔧 初始化 FHEVM SDK (修复版配置)...");
+  console.log("🔧 Initializing FHEVM SDK (fixed configuration)...");
   console.log("📡 Gateway URL:", FHEVM_CONFIG.gatewayUrl);
   console.log("🔑 Public Key URL:", FHEVM_CONFIG.publicKeyUrl);
   console.log("🏠 KMS Contract:", FHEVM_CONFIG.kmsContractAddress);
 
   try {
-    // 步骤 1: 获取公钥
+    // Step 1: Fetch public key
     const publicKeyData = await fetchPublicKey();
     
-    // 步骤 2: 创建包含公钥的完整配置
+    // Step 2: Create complete config with public key
     const configWithPublicKey = {
       ...FHEVM_CONFIG,
       publicKey: publicKeyData.publicKey,
       publicKeyId: publicKeyData.publicKeyId,
     };
     
-    console.log("📋 使用配置创建实例（含公钥）");
+    console.log("📋 Creating instance with configuration (including public key)");
     
-    // 步骤 3: 创建实例
+    // Step 3: Create instance
     fhevmInstance = await createInstance(configWithPublicKey);
     
-    console.log("✅ FHEVM SDK 初始化成功");
+    console.log("✅ FHEVM SDK initialized successfully");
     return fhevmInstance;
   } catch (error) {
-    console.error("❌ FHEVM SDK 初始化失败:", error);
+    console.error("❌ FHEVM SDK initialization failed:", error);
     throw error;
   }
 }
 
 /**
- * 获取已初始化的实例
+ * Get initialized instance
  */
 export function getInstance() {
   if (!fhevmInstance) {
-    throw new Error("FHEVM SDK 未初始化 - 请先调用 initFhevmSDK()");
+    throw new Error("FHEVM SDK not initialized - Please call initFhevmSDK() first");
   }
   return fhevmInstance;
 }
 
 /**
- * 加密数字并生成证明（官方 SDK API）
- * @param number 要加密的数字
- * @param contractAddress 合约地址
- * @param userAddress 用户地址
- * @returns handle 和 proof
+ * Encrypt number and generate proof (Official SDK API)
+ * @param number Number to encrypt
+ * @param contractAddress Contract address
+ * @param userAddress User address
+ * @returns handle and proof
  */
 export async function encryptNumber(
   number: number,
   contractAddress: string,
   userAddress: string
 ): Promise<{ handle: string; proof: string }> {
-  console.log(`🔐 加密数字: ${number}`);
+  console.log(`🔐 Encrypting number: ${number}`);
 
   try {
-    // 确保 SDK 已初始化
+    // Ensure SDK is initialized
     const instance = await initFhevmSDK();
 
-    // 创建加密输入（官方 API）
+    // Create encrypted input (official API)
     const encInput = instance.createEncryptedInput(contractAddress, userAddress);
     
-    // 添加 uint32 类型的数字
+    // Add uint32 number
     encInput.add32(number);
 
-    // 加密并生成证明
+    // Encrypt and generate proof
     const encrypted = await encInput.encrypt();
 
-    console.log("✅ 加密完成");
+    console.log("✅ Encryption completed");
     console.log("   Handle:", encrypted.handle || encrypted.handles?.[0]);
     console.log("   Proof length:", encrypted.proof?.length || encrypted.inputProof?.length);
 
-    // 根据实际 SDK 返回的格式调整
+    // Adjust based on actual SDK return format
     return {
       handle: encrypted.handle || encrypted.handles?.[0] || "",
       proof: encrypted.proof || encrypted.inputProof || "",
     };
   } catch (error) {
-    console.error("❌ 加密失败:", error);
+    console.error("❌ Encryption failed:", error);
     throw new Error(
-      `加密数字失败: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to encrypt number: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }
 
 /**
- * 检查 Gateway 状态
+ * Check Gateway status
  */
 export async function checkGatewayStatus(): Promise<boolean> {
   try {
     const response = await fetch(`${FHEVM_CONFIG.gatewayUrl}/health`);
     return response.ok;
   } catch (error) {
-    console.error("Gateway 健康检查失败:", error);
+    console.error("Gateway health check failed:", error);
     return false;
   }
 }

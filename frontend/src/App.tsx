@@ -8,10 +8,10 @@ import { Header } from "./components/Header";
 import { useContractType } from "./contexts/ContractContext";
 
 // Lazy load components for better performance
-const CreateGame = lazy(() => import("./components/CreateGame").then(module => ({ default: module.CreateGame })));
+const CreateGameSimple = lazy(() => import("./components/CreateGameSimple").then(module => ({ default: module.CreateGameSimple })));
 const GameList = lazy(() => import("./components/GameList").then(module => ({ default: module.GameList })));
-const JoinGame = lazy(() => import("./components/JoinGame").then(module => ({ default: module.JoinGame })));
-const GameDetails = lazy(() => import("./components/GameDetails").then(module => ({ default: module.GameDetails })));
+const JoinGameSimple = lazy(() => import("./components/JoinGameSimple").then(module => ({ default: module.JoinGameSimple })));
+const GameDetailsSimple = lazy(() => import("./components/GameDetailsSimple").then(module => ({ default: module.GameDetailsSimple })));
 const ContractSelector = lazy(() => import("./components/ContractSelector").then(module => ({ default: module.ContractSelector })));
 const GatewayStatusBadge = lazy(() => import("./components/GatewayStatusBadge").then(module => ({ default: module.GatewayStatusBadge })));
 
@@ -37,8 +37,12 @@ function App() {
 
   // Handle game creation
   const handleGameCreated = (gameId: number) => {
-    setSelectedGameId(gameId);
-    setView("details");
+    if (gameId > 0) {
+      // 正常模式：跳转到详情页
+      setSelectedGameId(gameId);
+      setView("details");
+    }
+    // 刷新游戏列表
     refreshGames();
   };
 
@@ -195,11 +199,11 @@ function App() {
           <div>
             <Suspense fallback={<LoadingFallback />}>
               {view === "create" ? (
-                <CreateGame onGameCreated={handleGameCreated} />
+                <CreateGameSimple onGameCreated={handleGameCreated} />
               ) : view === "join" && selectedGameId ? (
-                <JoinGame gameId={selectedGameId} onJoined={handleJoined} />
+                <JoinGameSimple gameId={selectedGameId} onJoined={handleJoined} />
               ) : view === "details" && selectedGameId ? (
-                <GameDetails gameId={selectedGameId} onGameEnded={handleGameEnded} />
+                <GameDetailsSimple gameId={selectedGameId} />
               ) : (
               <div className="card">
                 <div className="text-center py-12">

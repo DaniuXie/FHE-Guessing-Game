@@ -4,6 +4,8 @@
  */
 
 import { ContractType } from "../contexts/ContractContext";
+import { CONTRACT_ADDRESS } from "../utils/constants";
+import { CONTRACT_ADDRESS_FHE } from "../utils/constants_fhe";
 
 interface ContractSelectorProps {
   currentContract: ContractType;
@@ -74,7 +76,7 @@ export function ContractSelector({
                   <br />
                   • Fast transactions, low gas cost
                   <br />
-                  • Contract Address: 0x6bD042...377e
+                  • Contract Address: {CONTRACT_ADDRESS.slice(0, 8)}...{CONTRACT_ADDRESS.slice(-4)}
                   <br />• ✅ Stable and available
                 </p>
               </>
@@ -88,7 +90,7 @@ export function ContractSelector({
                   <br />
                   • Gateway auto-decryption callback
                   <br />
-                  • Contract Address: 0x39686A...c442E3
+                  • Contract Address: {CONTRACT_ADDRESS_FHE.slice(0, 8)}...{CONTRACT_ADDRESS_FHE.slice(-4)}
                   <br />• ✅ Enabled, ready to test
                 </p>
               </>

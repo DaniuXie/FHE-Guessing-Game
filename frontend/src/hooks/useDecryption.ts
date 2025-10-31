@@ -1,6 +1,6 @@
 /**
- * 完整的解密流程 Hook
- * 处理从提交请求到获取结果的完整流程
+ * Complete Decryption Flow Hook
+ * Handles the complete flow from submitting request to getting result
  */
 
 import { useState, useCallback } from 'react';
@@ -25,9 +25,9 @@ export interface UseDecryptionReturn {
   reset: () => void;
 }
 
-/**
- * 使用解密功能的 Hook
- */
+  /**
+   * Hook for using decryption functionality
+   */
 export function useDecryption(contract: Contract | null): UseDecryptionReturn {
   const [status, setStatus] = useState<DecryptionStatus>('idle');
   const [progress, setProgress] = useState<number>(0);
@@ -39,7 +39,7 @@ export function useDecryption(contract: Contract | null): UseDecryptionReturn {
    */
   const requestDecryption = useCallback(async (gameId: number): Promise<DecryptionResult> => {
     if (!contract) {
-      throw new Error('合约未初始化');
+      throw new Error('Contract not initialized');
     }
     
     try {
@@ -48,21 +48,21 @@ export function useDecryption(contract: Contract | null): UseDecryptionReturn {
       setError(null);
       setResult(null);
       
-      console.log('🎮 开始解密游戏:', gameId);
+      console.log('🎮 Starting game decryption:', gameId);
       
-      // ===== Step 1: 提交链上解密请求 =====
+      // ===== Step 1: Submit on-chain decryption request =====
       setProgress(10);
       const tx = await contract.endGame(gameId);
-      console.log('📝 交易已提交:', tx.hash);
+      console.log('📝 Transaction submitted:', tx.hash);
       
       setProgress(20);
       const receipt = await tx.wait();
-      console.log('✅ 交易已确认');
+      console.log('✅ Transaction confirmed');
       
-      // ===== Step 2: 从事件中获取 requestId =====
+      // ===== Step 2: Get requestId from events =====
       setProgress(30);
       
-      // 查找 DecryptionRequested 事件
+      // Find DecryptionRequested event
       let requestId: bigint | null = null;
       for (const log of receipt.logs) {
         try {
@@ -73,21 +73,21 @@ export function useDecryption(contract: Contract | null): UseDecryptionReturn {
           
           if (parsed && parsed.name === 'DecryptionRequested') {
             requestId = parsed.args.requestId;
-            console.log('🔑 解密请求ID:', requestId.toString());
+            console.log('🔑 Decryption request ID:', requestId.toString());
             break;
           }
         } catch (e) {
-          // 忽略解析失败的日志
+          // Ignore parsing failures
         }
       }
       
       if (!requestId) {
-        throw new Error('未找到 DecryptionRequested 事件');
+        throw new Error('DecryptionRequested event not found');
       }
       
-      // ===== Step 3: 轮询 Gateway（关键步骤）=====
+      // ===== Step 3: Poll Gateway (critical step) =====
       setStatus('polling');
-      console.log('⏳ 开始轮询 Gateway...');
+      console.log('⏳ Starting Gateway polling...');
       
       const relayerClient = new RelayerClient('sepolia');
       
@@ -95,30 +95,30 @@ export function useDecryption(contract: Contract | null): UseDecryptionReturn {
         requestId,
         await contract.getAddress(),
         {
-          maxAttempts: 60,  // 5分钟
-          interval: 5000,   // 5秒
+          maxAttempts: 60,  // 5 minutes
+          interval: 5000,   // 5 seconds
           onProgress: (pollProgress) => {
-            // 30-80% 分配给轮询阶段
+            // 30-80% allocated to polling phase
             const percentage = 30 + (pollProgress.percentage * 0.5);
             setProgress(Math.round(percentage));
-            console.log(`轮询进度: ${pollProgress.current}/${pollProgress.total}`);
+            console.log(`Polling progress: ${pollProgress.current}/${pollProgress.total}`);
           }
         }
       );
       
-      console.log('✅ Gateway 解密完成');
+      console.log('✅ Gateway decryption completed');
       
-      // ===== Step 4: 等待链上回调完成 =====
+      // ===== Step 4: Wait for on-chain callback completion =====
       setStatus('waiting');
       setProgress(85);
-      console.log('⏳ 等待链上回调...');
+      console.log('⏳ Waiting for on-chain callback...');
       
       await waitForCallbackCompletion(contract, gameId, (waitProgress) => {
         const percentage = 85 + (waitProgress * 0.15);
         setProgress(Math.round(percentage));
       });
       
-      // ===== Step 5: 获取最终结果 =====
+      // ===== Step 5: Get final result =====
       setProgress(95);
       const gameInfo = await contract.getGameInfo(gameId);
       
@@ -133,20 +133,20 @@ export function useDecryption(contract: Contract | null): UseDecryptionReturn {
       setStatus('success');
       setResult(decryptionResult);
       
-      console.log('🎉 解密流程完成!', decryptionResult);
+      console.log('🎉 Decryption flow completed!', decryptionResult);
       
       return decryptionResult;
       
     } catch (err: any) {
-      console.error('❌ 解密失败:', err);
+      console.error('❌ Decryption failed:', err);
       setStatus('failed');
-      setError(err.message || '解密失败');
+      setError(err.message || 'Decryption failed');
       throw err;
     }
   }, [contract]);
   
   /**
-   * 重置状态
+   * Reset state
    */
   const reset = useCallback(() => {
     setStatus('idle');
@@ -166,15 +166,15 @@ export function useDecryption(contract: Contract | null): UseDecryptionReturn {
 }
 
 /**
- * 等待链上回调完成
+ * Wait for on-chain callback completion
  */
 async function waitForCallbackCompletion(
   contract: Contract,
   gameId: number,
   onProgress: (progress: number) => void
 ): Promise<void> {
-  const MAX_WAIT = 120; // 2分钟
-  const INTERVAL = 2000; // 2秒
+  const MAX_WAIT = 120; // 2 minutes
+  const INTERVAL = 2000; // 2 seconds
   
   for (let i = 0; i < MAX_WAIT; i++) {
     onProgress(i / MAX_WAIT);
@@ -184,14 +184,14 @@ async function waitForCallbackCompletion(
     // GameStatus: 0=ACTIVE, 1=DECRYPTING, 2=ENDED, 3=EXPIRED, 4=CANCELLED
     const gameStatus = Number(game.status);
     if (gameStatus === 2) { // ENDED
-      console.log('✅ 回调已在链上完成');
+      console.log('✅ Callback completed on-chain');
       return;
     }
     
     await new Promise(resolve => setTimeout(resolve, INTERVAL));
   }
   
-  throw new Error('等待回调超时 - 请检查合约状态或重试');
+  throw new Error('Callback timeout - Please check contract status or retry');
 }
 
 export default useDecryption;

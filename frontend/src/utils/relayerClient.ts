@@ -1,6 +1,6 @@
 /**
- * Relayer Client - Gateway 轮询客户端
- * 基于 Zama 获奖项目最佳实践
+ * Relayer Client - Gateway Polling Client
+ * Based on best practices from Zama award-winning projects
  */
 
 // Relayer 配置
@@ -41,7 +41,7 @@ export class RelayerClient {
   }
   
   /**
-   * 轮询 Gateway 解密结果（核心功能）
+   * Poll Gateway decryption result (core functionality)
    */
   async pollDecryption(
     requestId: string | bigint,
@@ -54,11 +54,11 @@ export class RelayerClient {
       onProgress = null
     } = options;
     
-    console.log('🔐 开始轮询 Gateway 解密...', {
+    console.log('🔐 Starting Gateway decryption polling...', {
       requestId: requestId.toString(),
       contractAddress,
       maxAttempts,
-      estimatedTime: `${(maxAttempts * interval) / 1000}秒`
+      estimatedTime: `${(maxAttempts * interval) / 1000} seconds`
     });
     
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -92,10 +92,10 @@ export class RelayerClient {
           })
         });
         
-        // 成功获取解密结果
+        // Successfully got decryption result
         if (response.ok) {
           const data = await response.json();
-          console.log(`✅ Gateway 解密完成（第 ${attempt} 次尝试）`, data);
+          console.log(`✅ Gateway decryption completed (attempt ${attempt})`, data);
           return {
             success: true,
             data,
@@ -103,31 +103,31 @@ export class RelayerClient {
           };
         }
         
-        // 404 表示还未准备好
+        // 404 means not ready yet
         if (response.status === 404) {
-          console.log(`⏳ 尝试 ${attempt}/${maxAttempts}：解密尚未完成...`);
+          console.log(`⏳ Attempt ${attempt}/${maxAttempts}: Decryption not ready yet...`);
         } else {
-          console.warn(`⚠️ Gateway 返回异常状态: ${response.status}`);
+          console.warn(`⚠️ Gateway returned abnormal status: ${response.status}`);
         }
         
       } catch (error: any) {
-        console.warn(`⚠️ 轮询尝试 ${attempt} 失败:`, error.message);
+        console.warn(`⚠️ Polling attempt ${attempt} failed:`, error.message);
       }
       
-      // 等待下一次尝试
+      // Wait for next attempt
       if (attempt < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, interval));
       }
     }
     
-    // 超时
+    // Timeout
     throw new Error(
-      `Gateway 解密超时（已尝试 ${maxAttempts} 次，共 ${(maxAttempts * interval) / 1000}秒）`
+      `Gateway decryption timeout (attempted ${maxAttempts} times, total ${(maxAttempts * interval) / 1000} seconds)`
     );
   }
   
   /**
-   * 检查 Gateway 健康状态
+   * Check Gateway health status
    */
   async checkHealth(): Promise<boolean> {
     try {
@@ -139,13 +139,13 @@ export class RelayerClient {
       
       return response.ok;
     } catch (error) {
-      console.warn('⚠️ Gateway 健康检查失败:', error);
+      console.warn('⚠️ Gateway health check failed:', error);
       return false;
     }
   }
   
   /**
-   * 获取当前网络配置
+   * Get current network configuration
    */
   getConfig() {
     return { ...this.config };

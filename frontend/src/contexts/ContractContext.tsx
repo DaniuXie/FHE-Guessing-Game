@@ -1,12 +1,10 @@
 /**
- * 合约类型上下文 - 带 Gateway 自动检测和 Fallback
+ * Contract Type Context - Default to Plaintext (Scheme B)
  * 
- * 功能：
- * 1. 自动检测 Gateway 健康状态
- * 2. Gateway 可用时自动使用 FHE 合约
- * 3. Gateway 不可用时自动降级到明文合约
- * 4. 定时轮询（60秒）并自动切换
- * 5. 状态变化通知机制
+ * Features:
+ * 1. Default to Plaintext mode (Scheme B)
+ * 2. Gateway health detection
+ * 3. Manual switch to FHE mode when Gateway is available
  */
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
@@ -27,35 +25,35 @@ const ContractContext = createContext<ContractContextType | undefined>(
   undefined
 );
 
-// Gateway 配置
+// Gateway configuration
 const GATEWAY_URL = "https://gateway.sepolia.zama.ai";
-const POLLING_INTERVAL = 60000; // 60秒
+const POLLING_INTERVAL = 60000; // 60 seconds
 
-// 状态监听器
+// Status listeners
 type StatusListener = (status: GatewayStatus) => void;
 const statusListeners: StatusListener[] = [];
 
 export function ContractProvider({ children }: { children: ReactNode }) {
-  const [contractType, setContractType] = useState<ContractType>("simple");
+  const [contractType, setContractType] = useState<ContractType>("simple"); // Default: Plaintext (Scheme B)
   const [gatewayStatus, setGatewayStatus] = useState<GatewayStatus>("checking");
-  const [isAutoMode, setAutoMode] = useState<boolean>(true); // 默认自动模式
+  const [isAutoMode, setAutoMode] = useState<boolean>(false); // Default: Manual mode, stay in Plaintext
 
   /**
-   * 检查 Gateway 健康状态
+   * Check Gateway health status
    */
   const checkGatewayHealth = useCallback(async (): Promise<boolean> => {
     const url = `${GATEWAY_URL}/public_key`;
     
     try {
-      console.log("🔍 检测 Gateway 状态:", url);
+      console.log("🔍 Checking Gateway status:", url);
       const resp = await fetch(url, { 
         method: "GET", 
         cache: "no-store",
-        signal: AbortSignal.timeout(5000) // 5秒超时
+        signal: AbortSignal.timeout(5000) // 5s timeout
       });
       
       if (!resp.ok) {
-        console.warn(`⚠️ Gateway 响应异常: HTTP ${resp.status}`);
+        console.warn(`⚠️ Gateway response error: HTTP ${resp.status}`);
         return false;
       }
       
@@ -63,71 +61,71 @@ export function ContractProvider({ children }: { children: ReactNode }) {
       const isValid = text.startsWith("0x04") && text.length >= 66;
       
       if (isValid) {
-        console.log("✅ Gateway 在线");
+        console.log("✅ Gateway online");
       } else {
-        console.warn("⚠️ Gateway 返回格式无效");
+        console.warn("⚠️ Gateway returned invalid format");
       }
       
       return isValid;
     } catch (err) {
-      console.warn("⚠️ Gateway 不可用:", err instanceof Error ? err.message : String(err));
+      console.warn("⚠️ Gateway unavailable:", err instanceof Error ? err.message : String(err));
       return false;
     }
   }, []);
 
   /**
-   * 更新 Gateway 状态并通知监听器
+   * Update Gateway status and notify listeners
    */
   const updateGatewayStatus = useCallback((newStatus: GatewayStatus) => {
     setGatewayStatus(newStatus);
-    // 通知所有监听器
+    // Notify all listeners
     statusListeners.forEach(listener => listener(newStatus));
-    console.log("📡 Gateway 状态更新:", newStatus);
+    console.log("📡 Gateway status updated:", newStatus);
   }, []);
 
   /**
-   * 初始化和轮询逻辑
+   * Initialization and polling logic
    */
   useEffect(() => {
     let pollingTimer: NodeJS.Timeout | null = null;
 
-    // 初始检查
+    // Initial check
     const initCheck = async () => {
-      console.log("🚀 启动 Gateway 健康检查...");
+      console.log("🚀 Starting Gateway health check...");
       const isUp = await checkGatewayHealth();
       
       if (isUp) {
         updateGatewayStatus("up");
         if (isAutoMode) {
           setContractType("fhe");
-          console.log("✅ 自动启用 FHE 模式");
+          console.log("✅ Auto-enabled FHE mode");
         }
       } else {
         updateGatewayStatus("down");
         if (isAutoMode) {
           setContractType("simple");
-          console.log("⚠️ Gateway 离线，使用 Fallback 模式");
+          console.log("⚠️ Gateway offline, using Fallback mode");
         }
       }
     };
 
     initCheck();
 
-    // 定时轮询
+    // Periodic polling
     if (isAutoMode) {
       pollingTimer = setInterval(async () => {
         const isUp = await checkGatewayHealth();
         const oldStatus = gatewayStatus;
         const newStatus: GatewayStatus = isUp ? "up" : "down";
 
-        // 状态变化时自动切换
+        // Auto-switch on status change
         if (newStatus !== oldStatus && oldStatus !== "checking") {
           if (newStatus === "up" && gatewayStatus === "down") {
-            console.log("🔄 Gateway 恢复，自动切换到 FHE 模式");
+            console.log("🔄 Gateway recovered, switching to FHE mode");
             setContractType("fhe");
             updateGatewayStatus("up");
           } else if (newStatus === "down" && gatewayStatus === "up") {
-            console.log("🔄 Gateway 离线，自动切换到 Fallback 模式");
+            console.log("🔄 Gateway offline, switching to Fallback mode");
             setContractType("simple");
             updateGatewayStatus("down");
           }
@@ -136,25 +134,25 @@ export function ContractProvider({ children }: { children: ReactNode }) {
         }
       }, POLLING_INTERVAL);
 
-      console.log("⏱️ Gateway 轮询已启动（60秒间隔）");
+      console.log("⏱️ Gateway polling started (60s interval)");
     }
 
-    // 清理
+    // Cleanup
     return () => {
       if (pollingTimer) {
         clearInterval(pollingTimer);
-        console.log("⏹️ Gateway 轮询已停止");
+        console.log("⏹️ Gateway polling stopped");
       }
     };
   }, [isAutoMode, checkGatewayHealth, updateGatewayStatus, gatewayStatus]);
 
   /**
-   * 手动切换合约时，关闭自动模式
+   * Manual contract switch, disable auto mode
    */
   const handleSetContractType = useCallback((type: ContractType) => {
-    console.log("👆 手动切换合约:", type);
+    console.log("👆 Manual contract switch:", type);
     setContractType(type);
-    setAutoMode(false); // 手动切换后退出自动模式
+    setAutoMode(false); // Exit auto mode after manual switch
   }, []);
 
   return (

@@ -3,20 +3,20 @@ pragma solidity ^0.8.20;
 
 /**
  * @title GuessGameSimple
- * @notice 简化版猜数字游戏（明文版本）
- * @dev 不使用FHE加密，所有数据明文存储
+ * @notice Simplified number guessing game (Plaintext version)
+ * @dev Does not use FHE encryption, all data is stored in plaintext
  */
 contract GuessGameSimple {
     enum GameStatus { ACTIVE, ENDED }
     
     struct Game {
         uint256 gameId;
-        uint32 targetNumber;      // 明文存储目标数字
+        uint32 targetNumber;      // Plaintext storage of target number
         address owner;
         uint256 entryFee;
         uint256 prizePool;
         address[] players;
-        mapping(address => uint32) guesses;  // 明文存储猜测
+        mapping(address => uint32) guesses;  // Plaintext storage of guesses
         mapping(address => bool) hasGuessed;
         GameStatus status;
         address winner;

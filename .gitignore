@@ -72,3 +72,50 @@ yarn-error.log*
 # 临时文件
 *.tmp
 *.temp
+
+# Deployment packages
+netlify-deploy-package/
+netlify-deploy.zip
+
+# Local test files
+test_api.js
+test_contract_direct.js
+server.js
+frontend/test-metamask.html
+
+# Temporary markdown files (keep core docs: README.md, CONTRIBUTING.md, DEPLOYMENT.md, LICENSE, MANUAL_DEPLOY_GUIDE.md)
+BROWSER_QUERY_LIMITATION.md
+CHECK_VERSION_GUIDE.md
+COMMIT_MESSAGES_FIXED.md
+DEPLOYMENT_COMPLETE.md
+FINAL_CLEANUP_REPORT.md
+FINAL_FIX.md
+GAME_DETAILS_FIXED.md
+GITHUB_NETLIFY_UPDATE_SUCCESS.md
+LOCAL_API_GUIDE.md
+NETLIFY_CLI_DEPLOY.md
+NETLIFY_DEPLOY_CHECKLIST.md
+NETLIFY_DEPLOY_GUIDE.md
+NETLIFY_FUNCTIONS_DEPLOYMENT.md
+NETLIFY_UPDATE_GUIDE.md
+QUICK_DEPLOY_INSTRUCTIONS.md
+QUICK_START_API.md
+REDEPLOY_NOW.md
+UPDATE_DEPLOYMENT.md
+USAGE_GUIDE.md
+*.md
+完善完成报告-中优先级项目.md
+所有问题已修复-最终版.md
+控制台日志全部修复.md
+改进完成-自动加载和透明化.md
+立即重新部署.md
+结束游戏功能已添加.md
+自查修复完成报告.md
+自查报告-对照手册标准.md
+
+# Script files (keep only essential ones in scripts/)
+compress-deploy.ps1
+verify_build.ps1
+deploy-to-netlify-complete.bat
+setup-and-deploy.bat
+cleanup-repo.bat
