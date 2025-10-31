@@ -10,8 +10,9 @@
 
 **A fully confidential on-chain guessing game powered by Zama's Fully Homomorphic Encryption (FHE)**
 
-[Live Demo](https://zama-fhe-guessing-game.netlify.app/) • [Video](https://www.youtube.com/watch?v=_6REYxm8lj0#) • [Report Bug](https://github.com/yourusername/fhe-guessing-game/issues)
+[Live Demo](https://fhe-guessing-game.netlify.app/) • [Video](https://www.youtube.com/watch?v=_6REYxm8lj0#) • [Report Bug](https://github.com/yourusername/fhe-guessing-game/issues)
 
+The demo website address has changed：https://fhe-guessing-game.netlify.app/
 </div>
 
 ---
